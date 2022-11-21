@@ -10,3 +10,5 @@ doc/build
 .eggs
 .idea
 .noseids
+
+demo_data
