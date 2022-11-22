@@ -28,8 +28,9 @@ result_mesh.set_texture_image(os.path.join("demo_data", "partial_uvmap.png"))
 
 
 # Visualize all meshes net to each other
-mvs = MeshViewers(shape=(1, 3))
-mvs[0][0].set_static_meshes([original_mesh])
-mvs[0][1].set_static_meshes([partial_mesh])
-mvs[0][2].set_static_meshes([result_mesh])
+if "DISPLAY" in os.environ.keys() and os.environ["DISPLAY"]:
+    mvs = MeshViewers(shape=(1, 3))
+    mvs[0][0].set_static_meshes([original_mesh])
+    mvs[0][1].set_static_meshes([partial_mesh])
+    mvs[0][2].set_static_meshes([result_mesh])
 

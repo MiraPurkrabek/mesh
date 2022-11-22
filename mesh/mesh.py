@@ -325,7 +325,7 @@ class Mesh(object):
 
         return(visibility_compute(**arguments))
 
-    def visibile_mesh(self, camera=[0.0, 0.0, 0.0], color=(0, 0, 0), return_texture=False):
+    def visibile_mesh(self, camera=[0.0, 0.0, 0.0], color=(0, 0, 0), return_texture=False, criterion=np.any):
         vis = self.vertex_visibility(camera, omni_directional_camera=True, binary_visiblity=True)
         faces_to_keep = filter(lambda face: vis[face[0]] * vis[face[1]] * vis[face[2]], self.f)
         vertex_indices_to_keep = np.nonzero(vis)[0]
@@ -339,7 +339,6 @@ class Mesh(object):
         )
 
         if return_texture:
-            self.reload_texture_image()
             if not hasattr(self, '_texture_image'):
                 return (new_mesh, None)
             else:
@@ -352,7 +351,7 @@ class Mesh(object):
                     binary_visiblity=True
                 )
                 not_visible = ~ (unique_vis).astype(bool)
-                texture_image = texture.edit_texture(unique_mesh, not_visible, color=color)
+                texture_image = texture.edit_texture(unique_mesh, not_visible, color=color, criterion=criterion)
                 return (new_mesh, texture_image)
         else:
             return new_mesh
