@@ -6,6 +6,7 @@
 
 
 import numpy as np
+import cv2
 
 """
 texture.py
@@ -24,7 +25,6 @@ def texture_coordinates_by_vertex(self):
 
 
 def reload_texture_image(self):
-    import cv2
     # image is loaded as image_height-by-image_width-by-3 array in BGR color order.
     self._texture_image = cv2.imread(self.texture_filepath) if self.texture_filepath else None
     texture_sizes = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384]
@@ -105,3 +105,31 @@ def texture_rgb_vec(self, texture_coordinates):
     flat_texture = self.texture_image.flatten()
     indices = np.hstack([((d1 * (w + 1) * n_ch) + (d0 * n_ch) + (2 - i)).reshape(-1, 1) for i in range(n_ch)])
     return flat_texture[indices]
+
+
+def edit_texture(self, to_edit, color=(0, 0, 0), criterion=np.any):
+    texture_image = self._texture_image.copy()
+    h, w = np.array(texture_image.shape[:2]) - 1
+    texture_coors = texture_coordinates_by_vertex(self)
+
+    # Take always the first point. Not clear why returning more than one point
+    # as all points for one vertex are the same. Would maybe work differently for 
+    # different UV map
+    texture_coors = np.array(list(map(lambda x: x[0], texture_coors)))
+
+    for face in self.f:
+        edit_face = criterion(to_edit[face])
+        if edit_face:
+            
+            face_points = texture_coors[face, :]
+            pts = np.array([w, h]) * ( face_points * np.array([1, -1]) + np.array([0, 1]) )
+            pts = pts.astype(np.int32)
+
+            texture_image = cv2.drawContours(
+                texture_image,
+                [pts],
+                contourIdx=0,
+                color=color,
+                thickness=-1
+            )
+    return texture_image

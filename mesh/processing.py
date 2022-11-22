@@ -26,23 +26,7 @@ def reset_face_normals(self):
         self.reset_normals()
     self.fn = self.f
     return self
-
-
-def uniquified_mesh(self):
-    """This function returns a copy of the mesh in which vertices are copied such that
-    each vertex appears in only one face, and hence has only one texture"""
-    from mesh import Mesh
-    new_mesh = Mesh(v=self.v[self.f.flatten()], f=np.array(range(len(self.f.flatten()))).reshape(-1, 3))
-
-    if not hasattr(self, 'vn'):
-        self.reset_normals()
-    new_mesh.vn = self.vn[self.f.flatten()]
-
-    if hasattr(self, 'vt'):
-        new_mesh.vt = self.vt[self.ft.flatten()]
-        new_mesh.ft = new_mesh.f.copy()
-    return new_mesh
-
+    
 
 def keep_vertices(self, keep_list):
     trans = dict((v, i) for i, v in enumerate(keep_list))

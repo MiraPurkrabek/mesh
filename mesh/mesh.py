@@ -26,6 +26,7 @@ except ImportError:
 from . import landmarks
 from . import texture
 from . import processing
+from .visibility import visibility_compute
 
 
 __all__ = ["Mesh"]
@@ -101,6 +102,24 @@ class Mesh(object):
         if hasattr(self, 'textureID'):
             from OpenGL.GL import glDeleteTextures
             glDeleteTextures([self.textureID])
+
+    def uniquified_mesh(self):
+        """This function returns a copy of the mesh in which vertices are copied such that
+        each vertex appears in only one face, and hence has only one texture"""
+        new_mesh = Mesh(v=self.v[self.f.flatten()], f=np.array(range(len(self.f.flatten()))).reshape(-1, 3))
+
+        if not hasattr(self, 'vn'):
+            self.reset_normals()
+        new_mesh.vn = self.vn[self.f.flatten()]
+
+        if hasattr(self, 'vt'):
+            new_mesh.vt = self.vt[self.ft.flatten()]
+            new_mesh.ft = new_mesh.f.copy()
+
+        if hasattr(self, '_texture_image'):
+            new_mesh._texture_image = self._texture_image.copy()
+        
+        return new_mesh
 
     def edges_as_lines(self, copy_vertices=False):
         from .lines import Lines
@@ -288,11 +307,16 @@ class Mesh(object):
 
         return np.squeeze(vis) if binary_visiblity else np.squeeze(vis * n_dot_cam)
 
-    def vertex_visibility_and_normals(self, camera, omni_directional_camera=False):
-        from .visibility import visibility_compute
+    def vertex_visibility_and_normals(self, camera, omni_directional_camera=False):        
+        if isinstance(camera, list):
+            camera_origin = camera
+            assert omni_directional_camera, "Omnidrectional camera is not used but camera is of type 'list'"
+        else:
+            camera_origin = camera.origin.flatten()
+        
         arguments = {'v': self.v,
                      'f': self.f,
-                     'cams': np.array([camera.origin.flatten()])}
+                     'cams': np.array([camera_origin])}
 
         if not omni_directional_camera:
             arguments['sensors'] = np.array([camera.sensor_axis.flatten()])
@@ -301,14 +325,38 @@ class Mesh(object):
 
         return(visibility_compute(**arguments))
 
-    def visibile_mesh(self, camera=[0.0, 0.0, 0.0]):
-        vis = self.vertex_visibility(camera)
+    def visibile_mesh(self, camera=[0.0, 0.0, 0.0], color=(0, 0, 0), return_texture=False):
+        vis = self.vertex_visibility(camera, omni_directional_camera=True, binary_visiblity=True)
         faces_to_keep = filter(lambda face: vis[face[0]] * vis[face[1]] * vis[face[2]], self.f)
         vertex_indices_to_keep = np.nonzero(vis)[0]
         vertices_to_keep = self.v[vertex_indices_to_keep]
         old_to_new_indices = np.zeros(len(vis))
         old_to_new_indices[vertex_indices_to_keep] = range(len(vertex_indices_to_keep))
-        return Mesh(v=vertices_to_keep, f=np.array([old_to_new_indices[face] for face in faces_to_keep]))
+        
+        new_mesh = Mesh(
+            v=vertices_to_keep,
+            f=np.array([old_to_new_indices[face] for face in faces_to_keep])
+        )
+
+        if return_texture:
+            self.reload_texture_image()
+            if not hasattr(self, '_texture_image'):
+                return (new_mesh, None)
+            else:
+
+                # Uniquify the mesh first to get clear vertex - texture correspondence
+                unique_mesh = self.uniquified_mesh()
+                unique_vis = unique_mesh.vertex_visibility(
+                    camera,
+                    omni_directional_camera=True,
+                    binary_visiblity=True
+                )
+                not_visible = ~ (unique_vis).astype(bool)
+                texture_image = texture.edit_texture(unique_mesh, not_visible, color=color)
+                return (new_mesh, texture_image)
+        else:
+            return new_mesh
+        
 
     def estimate_circumference(self, plane_normal, plane_distance, partNamesAllowed=None, want_edges=False):
         raise Exception('estimate_circumference function has moved to body.mesh.metrics.circumferences')
@@ -320,11 +368,6 @@ class Mesh(object):
 
     def reset_face_normals(self):
         return processing.reset_face_normals(self)
-
-    def uniquified_mesh(self):
-        """This function returns a copy of the mesh in which vertices are copied such that
-        each vertex appears in only one face, and hence has only one texture"""
-        return processing.uniquified_mesh(self)
 
     def keep_vertices(self, keep_list):
         return processing.keep_vertices(self, keep_list)
@@ -414,6 +457,7 @@ class Mesh(object):
 
     def set_texture_image(self, path_to_texture):
         self.texture_filepath = path_to_texture
+        self.reload_texture_image()
 
     def texture_coordinates_by_vertex(self):
         return texture.texture_coordinates_by_vertex(self)
