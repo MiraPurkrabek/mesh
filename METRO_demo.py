@@ -11,6 +11,18 @@ from copy import deepcopy
 TEST_IMG = "classic_E_03"
 IMG_SIZE = 224
 
+UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
+UV_MAP_SIZE = 512
+
+if UV_MAP_TYPE.upper() == "SMPL":
+    UV_MAP_PATH = os.path.join("data", "demo", "smpl_uv.obj")
+elif UV_MAP_TYPE.upper() == "BF":
+    UV_MAP_PATH = os.path.join("data", "demo", "smpl_boundry_free_template.obj")
+else:
+    raise ValueError("Unknown UV Map Type")
+
+DATA_PATH = os.path.join("data", TEST_IMG)
+
 transform_img = transforms.Compose([           
             transforms.Resize(IMG_SIZE, max_size=225),
             transforms.CenterCrop(IMG_SIZE),
@@ -24,16 +36,15 @@ transform_img = transforms.Compose([
 # ----- Load data from original SMPL mesh -----------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 original_mesh = Mesh(
-    filename = os.path.join("data", "demo", "smpl_uv.obj"),
-    # filename = os.path.join("data", "demo", "smpl_boundry_free_template.obj"),
+    filename = UV_MAP_PATH,
 )
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Load data from the METRO --------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
-orig_vertices = np.load(os.path.join("data", TEST_IMG, "pred_vertices.npy")).astype(np.float64)
+orig_vertices = np.load(os.path.join(DATA_PATH, "pred_vertices.npy")).astype(np.float64)
 
-orig_camera = np.load(os.path.join("data", TEST_IMG, "pred_camera.npy"))
+orig_camera = np.load(os.path.join(DATA_PATH, "pred_camera.npy"))
 orig_camera = orig_camera.tolist()
 # Taken from ???, gives good results
 camera = [orig_camera[1], orig_camera[2], 2*1000.0/IMG_SIZE*orig_camera[0]]
@@ -65,8 +76,8 @@ partial_mesh, partial_texture_image = unique_mesh.visibile_mesh(
     criterion=np.all,
 )
 # Save the partial UV map to load as a new texture
-cv2.imwrite(os.path.join("data", "demo", "partial_uvmap.png"), partial_texture_image)
-partial_mesh.set_texture_image(os.path.join("data", "demo", "partial_uvmap.png"))
+cv2.imwrite(os.path.join(DATA_PATH, "partial_uvmap.png"), partial_texture_image)
+partial_mesh.set_texture_image(os.path.join(DATA_PATH, "partial_uvmap.png"))
 
 # Uniquify the mesh again so that I can color faces afterwards
 partial_mesh.print("Partial mesh")
@@ -93,20 +104,22 @@ print("Projected points", pts.shape)
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Show projection in the original image -------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
-input_image_PIL = transform_img(Image.open(os.path.join("data", TEST_IMG, "img.png"))) 
+input_image_PIL = transform_img(Image.open(os.path.join(DATA_PATH, "img.png"))) 
 input_image = input_image_PIL.numpy().transpose(1, 2, 0) * 255
 
 projected_image = input_image.copy()
 pts_int = pts.astype(int)
 projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)
-cv2.imwrite("projection_test.png", projected_image[:, :, ::-1])
+cv2.imwrite(
+    os.path.join(DATA_PATH, "projection_test.png"),
+    projected_image[:, :, ::-1]
+)
     
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Create the colored mesh ---------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 colored_mesh = Mesh(
-    # filename = os.path.join("data", "demo", "smpl_uv.obj"),
-    filename = os.path.join("data", "demo", "smpl_boundry_free_template.obj"),
+    filename = UV_MAP_PATH,
 )
 # colored_mesh.set_texture_image(os.path.join("data", "demo", "img_uvmap.png"))
 # Copy vertices and faces from the unique (fully visible) mesh
@@ -140,11 +153,33 @@ for fi, f in enumerate(colored_mesh.f):
     colored_mesh.fc[fi, :] = c
 
 # ---------------------------------------------------------------------------------------------------------------
+# ----- Create new texture --------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+colored_mesh.print("Colored mesh after coloring")
+new_texture = colored_mesh.create_texture_from_fc(texture_size=UV_MAP_SIZE)
+cv2.imwrite(
+    os.path.join(DATA_PATH, "new_texture.png"),
+    new_texture
+)
+
+# ---------------------------------------------------------------------------------------------------------------
+# ----- Create a mesh with the new texture ----------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+textured_mesh = Mesh(
+    filename = UV_MAP_PATH,
+)
+textured_mesh.v = original_mesh.v
+textured_mesh.set_vertex_colors("white")
+textured_mesh.set_texture_image(os.path.join(DATA_PATH, "new_texture.png"))
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # ----- Visualization -------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 if "DISPLAY" in os.environ.keys() and os.environ["DISPLAY"]:
     mvs = MeshViewers(shape=(1, 3))
     mvs[0][0].set_static_meshes([original_mesh])
-    mvs[0][1].set_static_meshes([partial_mesh])
-    mvs[0][2].set_static_meshes([colored_mesh])
+    # mvs[0][1].set_static_meshes([partial_mesh])
+    mvs[0][1].set_static_meshes([colored_mesh])
+    mvs[0][2].set_static_meshes([textured_mesh])
 

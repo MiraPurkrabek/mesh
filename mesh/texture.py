@@ -154,3 +154,28 @@ def project_to_camera(self, camera):
     # X_2d = X_trans
     return X_2d
 
+def create_texture_from_fc(self, texture_size=128):
+    texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
+    if not hasattr(self, 'fc') or not hasattr(self, 'vt') or not hasattr(self, 'f'):
+        return texture
+
+    texture_coors = texture_coordinates_by_vertex(self)
+    # Take always the first point. Not clear why returning more than one point
+    # as all points for one vertex are the same. Would maybe work differently for 
+    # different UV map
+    texture_coors = np.array(list(map(lambda x: x[0], texture_coors)))
+    for fi, face in enumerate(self.f):
+        face_points = texture_coors[face, :]
+        pts = np.array([texture_size-1, texture_size-1]) * ( face_points * np.array([1, -1]) + np.array([0, 1]) )
+        pts = pts.astype(np.int32)
+
+        texture = cv2.drawContours(
+            texture,
+            [pts],
+            contourIdx=0,
+            color=self.fc[fi, ::-1] * 255,
+            thickness=-1
+        )
+
+    return texture
+    

@@ -378,7 +378,9 @@ class Mesh(object):
                 return (new_mesh, texture_image)
         else:
             return new_mesh
-        
+
+    def create_texture_from_fc(self, texture_size=128):
+        return texture.create_texture_from_fc(self, texture_size)
 
     def estimate_circumference(self, plane_normal, plane_distance, partNamesAllowed=None, want_edges=False):
         raise Exception('estimate_circumference function has moved to body.mesh.metrics.circumferences')
