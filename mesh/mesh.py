@@ -103,6 +103,24 @@ class Mesh(object):
             from OpenGL.GL import glDeleteTextures
             glDeleteTextures([self.textureID])
 
+    def print(self, name="Mesh"):
+        print("{:s}:".format(name))
+
+        if hasattr(self, 'v'):
+            print("\tVertices: {}".format(self.v.shape))
+        if hasattr(self, 'vt'):
+            print("\tVT      : {}".format(self.vt.shape))
+        if hasattr(self, 'vn'):
+            print("\tVN      : {}".format(self.vn.shape))
+        if hasattr(self, 'vc'):
+            print("\tVC      : {}".format(self.vc.shape))
+        if hasattr(self, 'f'):
+            print("\tFaces   : {}".format(self.f.shape))
+        if hasattr(self, 'ft'):
+            print("\tFT      : {}".format(self.ft.shape))
+        if hasattr(self, 'fc'):
+            print("\tFC      : {}".format(self.fc.shape))
+
     def uniquified_mesh(self):
         """This function returns a copy of the mesh in which vertices are copied such that
         each vertex appears in only one face, and hence has only one texture"""
@@ -325,18 +343,23 @@ class Mesh(object):
 
         return(visibility_compute(**arguments))
 
-    def visibile_mesh(self, camera=[0.0, 0.0, 0.0], color=(0, 0, 0), return_texture=False, criterion=np.any):
-        vis = self.vertex_visibility(camera, omni_directional_camera=True, binary_visiblity=True)
-        faces_to_keep = filter(lambda face: vis[face[0]] * vis[face[1]] * vis[face[2]], self.f)
+    def visibile_mesh(self, camera=[0.0, 0.0, 0.0], color=(0, 0, 0), return_texture=False, criterion=np.any, normal_threshold=None):
+        vis = self.vertex_visibility(camera, normal_threshold=normal_threshold, omni_directional_camera=True, binary_visiblity=True)
+        faces_to_keep = list(filter(lambda face: vis[face[0]] * vis[face[1]] * vis[face[2]], self.f))
         vertex_indices_to_keep = np.nonzero(vis)[0]
         vertices_to_keep = self.v[vertex_indices_to_keep]
-        old_to_new_indices = np.zeros(len(vis))
+        old_to_new_indices = np.zeros(len(vis), dtype=int)
         old_to_new_indices[vertex_indices_to_keep] = range(len(vertex_indices_to_keep))
-        
+
         new_mesh = Mesh(
             v=vertices_to_keep,
             f=np.array([old_to_new_indices[face] for face in faces_to_keep])
         )
+
+        if hasattr(self, 'vt'):
+            new_mesh.vt = self.vt[vertex_indices_to_keep]
+        if hasattr(self, 'ft'):
+            new_mesh.ft = np.array(old_to_new_indices[faces_to_keep])
 
         if return_texture:
             if not hasattr(self, '_texture_image'):
@@ -444,6 +467,9 @@ class Mesh(object):
 
     def set_landmarks_from_raw(self, landmark_file_or_values):
         landmarks.set_landmarks_from_raw(self, landmark_file_or_values)
+
+    def project_to_camera(self, camera=[1, 0, 0], focal_length=1000):
+        return texture.project_to_camera(self, camera=camera)
 
     #######################################################
     # Texture methods

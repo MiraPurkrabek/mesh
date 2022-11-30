@@ -66,7 +66,7 @@ def transfer_texture(self, mesh_with_texture):
         if np.all(mesh_with_texture.f == np.fliplr(self.f)):
             self.ft = np.fliplr(self.ft)
         else:
-            # Same shape; let's see if it's face ordering; this could be a bit faster...
+            # Same shape let's see if it's face ordering this could be a bit faster...
             face_mapping = {}
             for f, ii in zip(self.f, range(len(self.f))):
                 face_mapping[" ".join([str(x) for x in sorted(f)])] = ii
@@ -133,3 +133,24 @@ def edit_texture(self, to_edit, color=(0, 0, 0), criterion=np.any):
                 thickness=-1
             )
     return texture_image
+
+def project_to_camera(self, camera):
+    """Perform orthographic projection of 3D points self.v using the camera parameters
+    Taken from the MeshGraphormer repo.
+    Args:
+        camera: size = [B, 3]
+    Returns:
+        Projected 2D points -- size = [B, N, 2]
+    """ 
+    if isinstance(camera, list):
+        camera = np.array(camera)
+    camera = camera.reshape(-1, 3)
+    # camera /= np.linalg.norm(camera)
+    X_trans = self.v[:, :2] + camera[:, 1:]
+    # shape = X_trans.shape
+    # X_2d = (camera[:, 0] * X_trans.reshape(shape[0], -1))
+    # X_2d = X_2d.view(shape)
+    X_2d = camera[:, 0] * X_trans
+    # X_2d = X_trans
+    return X_2d
+

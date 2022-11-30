@@ -1109,6 +1109,8 @@ class MeshViewerRemote:
                     camera['projection_matrix'],
                     camera['viewport'])
 
+                print("projection matrix", camera['projection_matrix'])
+
                 pyobj = {
                     'event_type': 'mouse_click_%sbutton' % button,
                     'u': cursor_x - camera['viewport'][0], 'v': window_height - cursor_y - camera['viewport'][1],

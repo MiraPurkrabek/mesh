@@ -11,4 +11,6 @@ doc/build
 .idea
 .noseids
 
-demo_data
+.vscode
+
+data
