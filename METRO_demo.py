@@ -9,10 +9,10 @@ import torch
 from copy import deepcopy
 
 TEST_IMG = "classic_E_03"
-IMG_SIZE = 224
-
+IMG_SIZE = 1024
 UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
-UV_MAP_SIZE = 512
+UV_MAP_SIZE = 1024
+NUMBER_OF_SUBDIVISIONS = 2
 
 if UV_MAP_TYPE.upper() == "SMPL":
     UV_MAP_PATH = os.path.join("data", "demo", "smpl_uv.obj")
@@ -24,7 +24,7 @@ else:
 DATA_PATH = os.path.join("data", TEST_IMG)
 
 transform_img = transforms.Compose([           
-            transforms.Resize(IMG_SIZE, max_size=225),
+            transforms.Resize(IMG_SIZE, max_size=IMG_SIZE+1),
             transforms.CenterCrop(IMG_SIZE),
             transforms.ToTensor(),
             # transforms.Normalize(
@@ -87,19 +87,19 @@ partial_mesh.print("Partial mesh after uniquification")
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Subdivide triangles to get finer texture ----------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
-partial_mesh.subdivide_triangles()
-partial_mesh.vn = partial_mesh.estimate_vertex_normals()
-partial_mesh.print("Partial mesh after subdivision")
+for si in range(NUMBER_OF_SUBDIVISIONS):
+    partial_mesh.subdivide_triangles()
+    partial_mesh.vn = partial_mesh.estimate_vertex_normals()
+    partial_mesh.print("Partial mesh after subdivision {:d}".format(si+1))
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Project points to the camera ----------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 projection_mesh = deepcopy(partial_mesh)
 projection_mesh.v = - projection_mesh.v
-pts = projection_mesh.project_to_camera(camera=orig_camera)
-pts += 1
+raw_pts = projection_mesh.project_to_camera(camera=orig_camera)
+pts = raw_pts + 1
 pts *= (IMG_SIZE/2)
-print("Projected points", pts.shape)
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Show projection in the original image -------------------------------------------------------------------
@@ -133,12 +133,7 @@ colored_mesh.print("Colored mesh")
 # ----- Sample color from the input image -----------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 inpt = torch.tensor(input_image.transpose(2, 0, 1).astype(float))[None, :, :, :]
-grid = torch.tensor(pts.astype(float))[None, :, None, :]
-
-# Scale to (-1, 1)
-grid -= torch.min(grid)
-grid /= grid.max() /2
-grid -= 1
+grid = torch.tensor(raw_pts.astype(float))[None, :, None, :]
 
 sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
     inpt/255,
@@ -154,7 +149,7 @@ colored_mesh.fc = np.clip(face_colors, 0, 1)
 colored_mesh.print("Colored mesh after coloring")
 new_texture = colored_mesh.create_texture_from_fc(texture_size=UV_MAP_SIZE)
 cv2.imwrite(
-    os.path.join(DATA_PATH, "new_texture.png"),
+    os.path.join(DATA_PATH, "new_texture_{}.png".format(UV_MAP_TYPE.lower())),
     new_texture
 )
 
@@ -166,7 +161,7 @@ textured_mesh = Mesh(
 )
 textured_mesh.v = original_mesh.v
 textured_mesh.set_vertex_colors("white")
-textured_mesh.set_texture_image(os.path.join(DATA_PATH, "new_texture.png"))
+textured_mesh.set_texture_image(os.path.join(DATA_PATH, "new_texture_{}.png".format(UV_MAP_TYPE.lower())))
 
 
 # ---------------------------------------------------------------------------------------------------------------
