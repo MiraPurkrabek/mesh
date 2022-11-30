@@ -145,12 +145,8 @@ sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
     grid
 ).numpy()).transpose()
 
-colored_mesh.fc = np.zeros((colored_mesh.f.shape[0], 3))
-for fi, f in enumerate(colored_mesh.f):
-    v1, v2, v3 = f
-    c = np.mean(sampled_colors[[v1, v2, v3], :], axis=0)
-    c = np.clip(c, 0, 1)
-    colored_mesh.fc[fi, :] = c
+face_colors = np.mean(sampled_colors[colored_mesh.f, :], axis=1)
+colored_mesh.fc = np.clip(face_colors, 0, 1)
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Create new texture --------------------------------------------------------------------------------------
