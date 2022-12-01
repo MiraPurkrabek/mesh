@@ -401,7 +401,7 @@ class Mesh(object):
         n_subdivisions=1,
         return_reprojection_image=False,
     ):
-        self.print("[DEBUG] Self mesh")
+        # self.print("[DEBUG] Self mesh")
 
         h, w, c = image.shape
         assert h == w, "The function expects square image"
@@ -412,24 +412,24 @@ class Mesh(object):
             projection_camera = visibility_camera
         
         unique_mesh = self.uniquified_mesh()
-        unique_mesh.print("[DEBUG] Unique mesh")
+        # unique_mesh.print("[DEBUG] Unique mesh")
 
         # Create partial mesh by visibility function
         partial_mesh = unique_mesh.visibile_mesh(
             camera=visibility_camera,
             criterion=np.all,
         )
-        partial_mesh.print("[DEBUG] Partial mesh")
+        # partial_mesh.print("[DEBUG] Partial mesh")
 
         # Unique mesh for easier sampling
         partial_mesh = partial_mesh.uniquified_mesh()
-        partial_mesh.print("[DEBUG] Partial mesh after uniquification")
+        # partial_mesh.print("[DEBUG] Partial mesh after uniquification")
 
         # Subdivision
         for _ in range(n_subdivisions):
             partial_mesh = partial_mesh.subdivide_triangles()
         partial_mesh.estimate_vertex_normals()
-        partial_mesh.print("[DEBUG] Partial mesh after subdivision")
+        # partial_mesh.print("[DEBUG] Partial mesh after subdivision")
 
         # Orthogonal projection
         partial_mesh.v = - partial_mesh.v
@@ -447,13 +447,12 @@ class Mesh(object):
         colored_mesh = Mesh(
             texturetype= self.texturetype,
         )
-        # colored_mesh.set_texture_image(os.path.join("data", "demo", "img_uvmap.png"))
         # Copy vertices and faces from the unique (fully visible) mesh
         colored_mesh.v = - partial_mesh.v
         colored_mesh.f = partial_mesh.f
         colored_mesh.vt = partial_mesh.vt
         colored_mesh.ft = partial_mesh.ft
-        colored_mesh.print("[DEBUG] Colored mesh")
+        # colored_mesh.print("[DEBUG] Colored mesh")
 
         # Sample colors from input image
         inpt = torch.tensor(image.transpose(2, 0, 1).astype(float))[None, :, :, :]
