@@ -252,7 +252,8 @@ packages = [namespace_package,
             '%s.mesh' % namespace_package,
             '%s.mesh.topology' % namespace_package,
             '%s.mesh.geometry' % namespace_package,
-            '%s.mesh.serialization' % namespace_package
+            '%s.mesh.serialization' % namespace_package,
+            '%s.mesh.texture_types' % namespace_package
             ]  # actual subpackage described here
 
 package_dir = {namespace_package: '%s-mesh-namespace' % namespace_package,
@@ -260,12 +261,14 @@ package_dir = {namespace_package: '%s-mesh-namespace' % namespace_package,
                '%s.mesh.topology' % namespace_package: 'mesh/topology',
                '%s.mesh.geometry' % namespace_package: 'mesh/geometry',
                '%s.mesh.serialization' % namespace_package: 'mesh/serialization',
+               '%s.mesh.texture_types' % namespace_package: 'mesh/texture_types',
                }
 
 setup(name='%s-mesh' % namespace_package,
       version=_get_version(),
       packages=packages,
       package_dir=package_dir,
+      include_package_data=True,
       ext_modules=all_extensions,
       author='Max Planck Perceiving Systems - Body Group',
       maintainer='Jean-Claude Passy',

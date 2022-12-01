@@ -1,2 +1,3 @@
 recursive-include mesh/src *
 recursive-include mesh/ressources *
+recursive-include mesh/texture_types *

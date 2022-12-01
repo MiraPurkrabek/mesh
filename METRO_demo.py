@@ -8,7 +8,7 @@ from torchvision import transforms
 import torch
 from copy import deepcopy
 
-TEST_IMG = "classic_E_03"
+TEST_IMG = "classic_W_00"
 IMG_SIZE = 1024
 UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
 UV_MAP_SIZE = 1024
@@ -39,6 +39,16 @@ original_mesh = Mesh(
     filename = UV_MAP_PATH,
 )
 
+control_mesh = Mesh(
+    texturetype = UV_MAP_TYPE.upper(),
+)
+
+# ---------------------------------------------------------------------------------------------------------------
+# ----- Load the input image ------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+input_image_PIL = transform_img(Image.open(os.path.join(DATA_PATH, "img.png"))) 
+input_image = input_image_PIL.numpy().transpose(1, 2, 0) * 255
+
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Load data from the METRO --------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
@@ -48,6 +58,28 @@ orig_camera = np.load(os.path.join(DATA_PATH, "pred_camera.npy"))
 orig_camera = orig_camera.tolist()
 # Taken from ???, gives good results
 camera = [orig_camera[1], orig_camera[2], 2*1000.0/IMG_SIZE*orig_camera[0]]
+
+# ---------------------------------------------------------------------------------------------------------------
+# ----- Estimate the new texture with built-in function ---------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+control_mesh.v = -orig_vertices.copy()
+control_texture, control_reprojection = control_mesh.create_texture_fom_image(
+    input_image,
+    camera,
+    projection_camera=orig_camera,
+    texture_size=1024,
+    n_subdivisions=2,
+    return_reprojection_image=True,
+)
+
+cv2.imwrite(
+    os.path.join(DATA_PATH, "new_texture_{}_control.png".format(UV_MAP_TYPE.lower())),
+    control_texture
+)
+cv2.imwrite(
+    os.path.join(DATA_PATH, "projection_test_control.png"),
+    control_reprojection[:, :, ::-1]
+)
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Set the estimated pose ----------------------------------------------------------------------------------
@@ -104,9 +136,6 @@ pts *= (IMG_SIZE/2)
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Show projection in the original image -------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
-input_image_PIL = transform_img(Image.open(os.path.join(DATA_PATH, "img.png"))) 
-input_image = input_image_PIL.numpy().transpose(1, 2, 0) * 255
-
 projected_image = input_image.copy()
 pts_int = pts.astype(int)
 projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)

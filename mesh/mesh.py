@@ -13,6 +13,7 @@ Mesh module
 import os
 from functools import reduce
 
+import torch
 import numpy as np
 
 from . import colors
@@ -27,6 +28,7 @@ from . import landmarks
 from . import texture
 from . import processing
 from .visibility import visibility_compute
+from .texture_types import BF_objfile_path, SMPL_objfile_path
 
 
 __all__ = ["Mesh"]
@@ -51,6 +53,7 @@ class Mesh(object):
                  f=None,
                  segm=None,
                  filename=None,
+                 texturetype=None,
                  ppfilename=None,
                  lmrkfilename=None,
                  basename=None,
@@ -64,6 +67,13 @@ class Mesh(object):
         :param filename: a filename from which a mesh is loaded
         """
 
+        if texturetype is not None and texturetype.upper() in ["SMPL", "BF"]:
+            self.texturetype = texturetype.upper()
+            if texturetype.upper() == "BF":
+                filename = BF_objfile_path
+            else:
+                filename = SMPL_objfile_path
+            print(filename)
         if filename is not None:
             self.load_from_file(filename)
             if hasattr(self, 'f'):
@@ -381,6 +391,87 @@ class Mesh(object):
 
     def create_texture_from_fc(self, texture_size=128):
         return texture.create_texture_from_fc(self, texture_size)
+
+    def create_texture_fom_image(
+        self, 
+        image,
+        visibility_camera,
+        projection_camera=None,
+        texture_size=256,
+        n_subdivisions=1,
+        return_reprojection_image=False,
+    ):
+        self.print("[DEBUG] Self mesh")
+
+        h, w, c = image.shape
+        assert h == w, "The function expects square image"
+
+        assert hasattr(self, 'texturetype'), "Texture type must be specified"
+        
+        if projection_camera is None:
+            projection_camera = visibility_camera
+        
+        unique_mesh = self.uniquified_mesh()
+        unique_mesh.print("[DEBUG] Unique mesh")
+
+        # Create partial mesh by visibility function
+        partial_mesh = unique_mesh.visibile_mesh(
+            camera=visibility_camera,
+            criterion=np.all,
+        )
+        partial_mesh.print("[DEBUG] Partial mesh")
+
+        # Unique mesh for easier sampling
+        partial_mesh = partial_mesh.uniquified_mesh()
+        partial_mesh.print("[DEBUG] Partial mesh after uniquification")
+
+        # Subdivision
+        for _ in range(n_subdivisions):
+            partial_mesh = partial_mesh.subdivide_triangles()
+        partial_mesh.estimate_vertex_normals()
+        partial_mesh.print("[DEBUG] Partial mesh after subdivision")
+
+        # Orthogonal projection
+        partial_mesh.v = - partial_mesh.v
+        raw_pts = partial_mesh.project_to_camera(camera=projection_camera)
+
+        # Draw reprojection image
+        if return_reprojection_image:
+            projected_image = image.copy()
+            pts = raw_pts + 1
+            pts *= (h/2)
+            pts_int = pts.astype(int)
+            projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)
+
+        # Create temporary colored mesh
+        colored_mesh = Mesh(
+            texturetype= self.texturetype,
+        )
+        # colored_mesh.set_texture_image(os.path.join("data", "demo", "img_uvmap.png"))
+        # Copy vertices and faces from the unique (fully visible) mesh
+        colored_mesh.v = - partial_mesh.v
+        colored_mesh.f = partial_mesh.f
+        colored_mesh.vt = partial_mesh.vt
+        colored_mesh.ft = partial_mesh.ft
+        colored_mesh.print("[DEBUG] Colored mesh")
+
+        # Sample colors from input image
+        inpt = torch.tensor(image.transpose(2, 0, 1).astype(float))[None, :, :, :]
+        grid = torch.tensor(raw_pts.astype(float))[None, :, None, :]
+
+        sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
+            inpt/255,
+            grid
+        ).numpy()).transpose()
+
+        face_colors = np.mean(sampled_colors[colored_mesh.f, :], axis=1)
+        colored_mesh.fc = np.clip(face_colors, 0, 1)
+        new_texture = colored_mesh.create_texture_from_fc(texture_size=texture_size)
+        
+        if return_reprojection_image:
+            return new_texture, projected_image
+        else:
+            return new_texture
 
     def estimate_circumference(self, plane_normal, plane_distance, partNamesAllowed=None, want_edges=False):
         raise Exception('estimate_circumference function has moved to body.mesh.metrics.circumferences')
