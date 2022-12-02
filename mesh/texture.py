@@ -165,7 +165,7 @@ def create_texture_from_fc(self, texture_size=128):
     # Take always the first point. Not clear why returning more than one point
     # as all points for one vertex are the same. Would maybe work differently for 
     # different UV map
-    texture_coors = np.array(list(map(lambda x: x[0], texture_coors)))
+    texture_coors = np.array(list(map(lambda x: x[0] if len(x) else [0, 0], texture_coors)))
     for fi, face in enumerate(self.f):
         face_points = texture_coors[face, :]
         pts = np.array([texture_size-1, texture_size-1]) * ( face_points * np.array([1, -1]) + np.array([0, 1]) )

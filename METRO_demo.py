@@ -8,7 +8,7 @@ from torchvision import transforms
 import torch
 from copy import deepcopy
 
-TEST_IMG = "classic_E_03"
+TEST_IMG = "occlusion_E_00"
 IMG_SIZE = 1024
 UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
 UV_MAP_SIZE = 1024
@@ -121,7 +121,6 @@ partial_mesh.print("Partial mesh after uniquification")
 # ---------------------------------------------------------------------------------------------------------------
 for si in range(NUMBER_OF_SUBDIVISIONS):
     partial_mesh.subdivide_triangles()
-    partial_mesh.vn = partial_mesh.estimate_vertex_normals()
     partial_mesh.print("Partial mesh after subdivision {:d}".format(si+1))
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -130,6 +129,17 @@ for si in range(NUMBER_OF_SUBDIVISIONS):
 projection_mesh = deepcopy(partial_mesh)
 projection_mesh.v = - projection_mesh.v
 raw_pts = projection_mesh.project_to_camera(camera=orig_camera)
+
+# Remove vertices that are not in the image
+valid_pts = np.all(raw_pts <= 1, axis=1)
+valid_pts = np.all(raw_pts >= -1, axis=1) & valid_pts
+projection_mesh = projection_mesh.visibile_mesh(vertices_indices= valid_pts)
+raw_pts = raw_pts[valid_pts, :]
+
+# Also remove from the partial mesh
+partial_mesh = partial_mesh.visibile_mesh(vertices_indices= valid_pts)
+partial_mesh.vn = partial_mesh.estimate_vertex_normals()
+
 pts = raw_pts + 1
 pts *= (IMG_SIZE/2)
 
