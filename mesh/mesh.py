@@ -73,7 +73,6 @@ class Mesh(object):
                 filename = BF_objfile_path
             else:
                 filename = SMPL_objfile_path
-            print(filename)
         if filename is not None:
             self.load_from_file(filename)
             if hasattr(self, 'f'):
@@ -434,6 +433,17 @@ class Mesh(object):
         # Orthogonal projection
         partial_mesh.v = - partial_mesh.v
         raw_pts = partial_mesh.project_to_camera(camera=projection_camera)
+        valid_pts = np.all(raw_pts <= 1, axis=1)
+        valid_pts = np.all(raw_pts >= -1, axis=1) & valid_pts
+
+        if not np.all(valid_pts):
+            raw_pts = raw_pts[valid_pts, :]
+            if return_reprojection_image:
+                return None, None
+            else:
+                return None
+
+        print("raw pts", raw_pts.shape, np.min(raw_pts), np.max(raw_pts))
 
         # Draw reprojection image
         if return_reprojection_image:
@@ -441,6 +451,7 @@ class Mesh(object):
             pts = raw_pts + 1
             pts *= (h/2)
             pts_int = pts.astype(int)
+            print("int pts", pts_int.shape, np.min(pts_int), np.max(pts_int))
             projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)
 
         # Create temporary colored mesh
