@@ -483,19 +483,6 @@ class Mesh(object):
                 stop-start,
                 (stop-start)/60
             ))
-
-        # # Sample colors from input image
-        # inpt = torch.tensor(image.transpose(2, 0, 1).astype(float))[None, :, :, :]
-        # grid = torch.tensor(raw_pts.astype(float))[None, :, None, :]
-
-        # sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
-        #     inpt/255,
-        #     grid
-        # ).numpy()).transpose()
-
-        # face_colors = np.mean(sampled_colors[colored_mesh.f, :], axis=1)
-        # colored_mesh.fc = np.clip(face_colors, 0, 1)
-        # new_texture = colored_mesh.create_texture_from_fc(texture_size=texture_size)
         
         if return_reprojection_image:
             return new_texture, projected_image
