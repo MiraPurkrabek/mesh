@@ -8,11 +8,11 @@ from torchvision import transforms
 import torch
 from copy import deepcopy
 
-TEST_IMG = "classic_W_00"
+TEST_IMG = "classic_E_03"
 IMG_SIZE = 1024
 UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
 UV_MAP_SIZE = 1024
-NUMBER_OF_SUBDIVISIONS = 2
+NUMBER_OF_SUBDIVISIONS = 0
 
 if UV_MAP_TYPE.upper() == "SMPL":
     UV_MAP_PATH = os.path.join("data", "demo", "smpl_uv.obj")
@@ -67,8 +67,8 @@ control_texture, control_reprojection = control_mesh.create_texture_fom_image(
     input_image,
     camera,
     projection_camera=orig_camera,
-    texture_size=1024,
-    n_subdivisions=2,
+    texture_size=UV_MAP_SIZE,
+    n_subdivisions=NUMBER_OF_SUBDIVISIONS,
     return_reprojection_image=True,
 )
 
@@ -190,7 +190,7 @@ textured_mesh = Mesh(
 )
 textured_mesh.v = original_mesh.v
 textured_mesh.set_vertex_colors("white")
-textured_mesh.set_texture_image(os.path.join(DATA_PATH, "new_texture_{}.png".format(UV_MAP_TYPE.lower())))
+textured_mesh.set_texture_image(os.path.join(DATA_PATH, "new_texture_{}_control.png".format(UV_MAP_TYPE.lower())))
 
 
 # ---------------------------------------------------------------------------------------------------------------

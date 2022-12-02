@@ -7,6 +7,8 @@
 
 import numpy as np
 import cv2
+import time
+import matplotlib.pyplot as plt
 
 """
 texture.py
@@ -178,4 +180,112 @@ def create_texture_from_fc(self, texture_size=128):
         )
 
     return texture
+
+def create_texture_from_image(self, pts, image, texture_size=128):
+    # Re-scale pts from 0 to 1
+    if np.min(pts) < 0 or np.max(pts) > 1:
+        pts += 1
+        pts /= 2
+
+    assert (np.min(pts) >= 0 and np.max(pts) <= 1)
+    
+    _, image_size, _ = image.shape
+
+    texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
+    
+    texture_coors = texture_coordinates_by_vertex(self)
+    # Take always the first point. Not clear why returning more than one point
+    # as all points for one vertex are the same. Would maybe work differently for 
+    # different UV map
+    texture_coors = np.array(list(map(lambda x: x[0] if len(x) else [0, 0], texture_coors)))
+    for fi, face in enumerate(self.f):
+        start_time = time.perf_counter()
+        
+        image_tri = (pts[face, :] * image_size).astype(np.float32)
+        texture_tri = (texture_coors[face] * texture_size).astype(np.float32)
+
+        pts_sampling_time = time.perf_counter() - start_time
+        start_time = time.perf_counter()
+        
+        image_rect = cv2.boundingRect(image_tri)
+        texture_rect = cv2.boundingRect(texture_tri)
+
+        image_tri_rectified = image_tri - np.array([image_rect[0], image_rect[1]], dtype=np.float32)
+        texture_tri_rectified = texture_tri - np.array([texture_rect[0], texture_rect[1]], dtype=np.float32)
+
+        image_rectified = image[
+            image_rect[1]:image_rect[1]+image_rect[3],
+            image_rect[0]:image_rect[0]+image_rect[2],
+            :
+        ]
+
+        warpMat = cv2.getAffineTransform(
+            image_tri_rectified,
+            texture_tri_rectified,
+        )
+
+        warpMat_time = time.perf_counter() - start_time
+        start_time = time.perf_counter()
+
+        warped_rect = cv2.warpAffine(
+            image_rectified,
+            warpMat,
+            (texture_rect[2], texture_rect[3]),
+            None,
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_REFLECT_101
+        )
+
+        warping_time = time.perf_counter() - start_time
+        start_time = time.perf_counter()
+
+        mask = np.zeros((texture_rect[3], texture_rect[2], 3), dtype = np.float32)
+        
+        mask = cv2.fillConvexPoly(
+            mask,
+            texture_tri_rectified.astype(np.int32),
+            color=(1.0, 1.0, 1.0),
+        )
+        warped_rect = warped_rect * mask
+
+        texture[
+            texture_rect[1]:texture_rect[1]+texture_rect[3],
+            texture_rect[0]:texture_rect[0]+texture_rect[2],
+        ] *= ((1.0, 1.0, 1.0) - mask).astype(texture.dtype)
+        texture[
+            texture_rect[1]:texture_rect[1]+texture_rect[3],
+            texture_rect[0]:texture_rect[0]+texture_rect[2],
+        ] += warped_rect.astype(texture.dtype)
+        
+        masking_time = time.perf_counter() - start_time
+        start_time = time.perf_counter()
+
+        # if fi%100 == 0:
+        #     print("{:d} ({:.2f}%)".format(fi, fi/len(self.f)*100))
+        #     print("\t{:.2f} s - sampling".format(pts_sampling_time))
+        #     print("\t{:.2f} s - warpMat time".format(warpMat_time))
+        #     print("\t{:.2f} s - warping".format(warping_time))
+        #     print("\t{:.2f} s - masking".format(masking_time))
+            # break
+    
+    # fig = plt.figure(figsize=(10, 7))
+    # rows = 1
+    # columns = 4
+    # fig.add_subplot(rows, columns, 1)
+    # plt.imshow(image/255)
+    # plt.plot(image_tri[:, 0], image_tri[:, 1], 'b.')
+    # plt.plot(image_rect[0]              , image_rect[1]              , 'g.')
+    # plt.plot(image_rect[0]+image_rect[2], image_rect[1]              , 'g.')
+    # plt.plot(image_rect[0]              , image_rect[1]+image_rect[3], 'g.')
+    # plt.plot(image_rect[0]+image_rect[2], image_rect[1]+image_rect[3], 'g.')
+    # fig.add_subplot(rows, columns, 2)
+    # plt.imshow(image_rectified/255)
+    # fig.add_subplot(rows, columns, 3)
+    # plt.imshow(warped_rect/255)
+    # fig.add_subplot(rows, columns, 4)
+    # plt.imshow(texture/255)
+    # plt.plot(texture_tri[:, 0], texture_tri[:, 1], 'r.')
+    # plt.show()
+    
+    return texture[::-1, :, ::-1]
     

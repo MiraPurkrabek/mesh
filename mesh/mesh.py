@@ -12,6 +12,7 @@ Mesh module
 
 import os
 from functools import reduce
+import time
 
 import torch
 import numpy as np
@@ -399,8 +400,10 @@ class Mesh(object):
         texture_size=256,
         n_subdivisions=1,
         return_reprojection_image=False,
+        verbose=True,
     ):
-        # self.print("[DEBUG] Self mesh")
+        if verbose:
+            self.print("[DEBUG] Self mesh")
 
         h, w, c = image.shape
         assert h == w, "The function expects square image"
@@ -410,25 +413,30 @@ class Mesh(object):
         if projection_camera is None:
             projection_camera = visibility_camera
         
+        # unique_mesh = self
         unique_mesh = self.uniquified_mesh()
-        # unique_mesh.print("[DEBUG] Unique mesh")
+        if verbose:
+            unique_mesh.print("[DEBUG] Unique mesh")
 
         # Create partial mesh by visibility function
         partial_mesh = unique_mesh.visibile_mesh(
             camera=visibility_camera,
             criterion=np.all,
         )
-        # partial_mesh.print("[DEBUG] Partial mesh")
+        if verbose:
+            partial_mesh.print("[DEBUG] Partial mesh")
 
         # Unique mesh for easier sampling
         partial_mesh = partial_mesh.uniquified_mesh()
-        # partial_mesh.print("[DEBUG] Partial mesh after uniquification")
+        if verbose:
+            partial_mesh.print("[DEBUG] Partial mesh after uniquification")
 
         # Subdivision
         for _ in range(n_subdivisions):
             partial_mesh = partial_mesh.subdivide_triangles()
         partial_mesh.estimate_vertex_normals()
-        # partial_mesh.print("[DEBUG] Partial mesh after subdivision")
+        if verbose:
+            partial_mesh.print("[DEBUG] Partial mesh after subdivision")
 
         # Orthogonal projection
         partial_mesh.v = - partial_mesh.v
@@ -443,7 +451,7 @@ class Mesh(object):
             else:
                 return None
 
-        print("raw pts", raw_pts.shape, np.min(raw_pts), np.max(raw_pts))
+        # print("raw pts", raw_pts.shape, np.min(raw_pts), np.max(raw_pts))
 
         # Draw reprojection image
         if return_reprojection_image:
@@ -451,7 +459,7 @@ class Mesh(object):
             pts = raw_pts + 1
             pts *= (h/2)
             pts_int = pts.astype(int)
-            print("int pts", pts_int.shape, np.min(pts_int), np.max(pts_int))
+            # print("int pts", pts_int.shape, np.min(pts_int), np.max(pts_int))
             projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)
 
         # Create temporary colored mesh
@@ -463,20 +471,31 @@ class Mesh(object):
         colored_mesh.f = partial_mesh.f
         colored_mesh.vt = partial_mesh.vt
         colored_mesh.ft = partial_mesh.ft
-        # colored_mesh.print("[DEBUG] Colored mesh")
+        if verbose:
+            colored_mesh.print("[DEBUG] Colored mesh")
 
-        # Sample colors from input image
-        inpt = torch.tensor(image.transpose(2, 0, 1).astype(float))[None, :, :, :]
-        grid = torch.tensor(raw_pts.astype(float))[None, :, None, :]
 
-        sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
-            inpt/255,
-            grid
-        ).numpy()).transpose()
+        start = time.perf_counter()
+        new_texture = texture.create_texture_from_image(colored_mesh, raw_pts, image, texture_size=texture_size)
+        stop = time.perf_counter()
+        if verbose:
+            print("The Texture commputation took {:.2f} seconds ({:.2f} minutes)".format(
+                stop-start,
+                (stop-start)/60
+            ))
 
-        face_colors = np.mean(sampled_colors[colored_mesh.f, :], axis=1)
-        colored_mesh.fc = np.clip(face_colors, 0, 1)
-        new_texture = colored_mesh.create_texture_from_fc(texture_size=texture_size)
+        # # Sample colors from input image
+        # inpt = torch.tensor(image.transpose(2, 0, 1).astype(float))[None, :, :, :]
+        # grid = torch.tensor(raw_pts.astype(float))[None, :, None, :]
+
+        # sampled_colors = np.squeeze(torch.nn.functional.grid_sample(
+        #     inpt/255,
+        #     grid
+        # ).numpy()).transpose()
+
+        # face_colors = np.mean(sampled_colors[colored_mesh.f, :], axis=1)
+        # colored_mesh.fc = np.clip(face_colors, 0, 1)
+        # new_texture = colored_mesh.create_texture_from_fc(texture_size=texture_size)
         
         if return_reprojection_image:
             return new_texture, projected_image
