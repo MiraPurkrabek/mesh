@@ -17,7 +17,7 @@ print(CAMERA)
 
 # Load the original mesh
 original_mesh = Mesh(
-    filename = os.path.join("data", "demo", "smpl_uv.obj"),
+    filename = os.path.join("SMPL", "smpl_uv.obj"),
 )
 original_mesh.set_vertex_colors("white")
 original_mesh.set_texture_image(os.path.join("data", "demo", "img.png"))
@@ -30,7 +30,7 @@ cv2.imwrite(os.path.join("data", "demo", "partial_uvmap.png"), texture_image)
 
 # Load a new mesh with edited texture
 result_mesh = Mesh(
-    filename = os.path.join("data", "demo", "smpl_uv.obj"),
+    filename = os.path.join("SMPL", "smpl_uv.obj"),
 )
 result_mesh.set_vertex_colors("white")
 result_mesh.set_texture_image(os.path.join("data", "demo", "partial_uvmap.png"))

@@ -15,9 +15,9 @@ UV_MAP_SIZE = 1024
 NUMBER_OF_SUBDIVISIONS = 0
 
 if UV_MAP_TYPE.upper() == "SMPL":
-    UV_MAP_PATH = os.path.join("data", "demo", "smpl_uv.obj")
+    UV_MAP_PATH = os.path.join("SMPL", "smpl_uv.obj")
 elif UV_MAP_TYPE.upper() == "BF":
-    UV_MAP_PATH = os.path.join("data", "demo", "smpl_boundry_free_template.obj")
+    UV_MAP_PATH = os.path.join("SMPL", "smpl_boundry_free_template.obj")
 else:
     raise ValueError("Unknown UV Map Type")
 
