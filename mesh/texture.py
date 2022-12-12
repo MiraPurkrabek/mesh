@@ -8,6 +8,7 @@
 import numpy as np
 import cv2
 import time
+import json
 import matplotlib.pyplot as plt
 
 """
@@ -180,6 +181,55 @@ def create_texture_from_fc(self, texture_size=128):
         )
 
     return texture
+
+def extract_image_patches(self, image, camera, patches_dict, target_size=256):
+    
+
+    assert isinstance(patches_dict, dict), "Patches dict must be a dictionary. It is {}".format(type(patches_dict))
+
+    _, image_size, _ = image.shape
+
+    projected_pts = project_to_camera(self, camera)
+    projected_pts = projected_pts + 1
+    projected_pts *= (image_size/2)
+
+    for patch_name, patch_pts in patches_dict.items():
+        if patch_name.startswith("_"):
+            continue
+
+        # if patch_name.startswith("front"):
+        #     continue
+
+        print(patch_name.upper())
+
+        patch_image_coors = projected_pts[patch_pts, :]
+        patch_image_coors = patch_image_coors.astype(np.float32)
+
+        plt.imshow(image/255)
+        plt.plot(patch_image_coors[:, 0], patch_image_coors[:, 1], 'rx')
+        plt.show()
+
+        dst = np.array([
+            [0, 0] ,
+            [target_size, 0],
+            [target_size, target_size],
+            [0, target_size],
+        ], dtype=np.float32)
+
+        warpMat, status = cv2.findHomography(
+            patch_image_coors,
+            dst,
+        )
+        warped_rect = cv2.warpPerspective(
+            image,
+            warpMat,
+            (target_size, target_size),
+            flags=cv2.INTER_CUBIC,
+        )
+
+        plt.imshow(warped_rect/255)
+        plt.show()
+
 
 def create_texture_from_image(self, pts, image, texture_size=128):
     # Re-scale pts from 0 to 1

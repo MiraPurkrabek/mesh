@@ -11,6 +11,7 @@ Mesh module
 
 
 import os
+import json
 from functools import reduce
 import time
 
@@ -30,6 +31,7 @@ from . import texture
 from . import processing
 from .visibility import visibility_compute
 from .texture_types import BF_objfile_path, SMPL_objfile_path
+from .manual_patches import SMPL_manual_patches
 
 
 __all__ = ["Mesh"]
@@ -402,6 +404,24 @@ class Mesh(object):
 
     def create_texture_from_fc(self, texture_size=128):
         return texture.create_texture_from_fc(self, texture_size)
+
+    def extract_patches_from_image(
+        self, image, camera=[1, 0, 0], target_size=256, patches_dict=None
+    ):
+        if patches_dict is None:
+            with open(
+               SMPL_manual_patches,
+                "r",
+            ) as points_file:
+                patches_dict = json.load(points_file)
+
+        return texture.extract_image_patches(
+            self,
+            image,
+            camera=camera,
+            target_size=target_size,
+            patches_dict=patches_dict
+        )
 
     def create_texture_fom_image(
         self, 

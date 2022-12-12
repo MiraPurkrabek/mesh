@@ -253,7 +253,8 @@ packages = [namespace_package,
             '%s.mesh.topology' % namespace_package,
             '%s.mesh.geometry' % namespace_package,
             '%s.mesh.serialization' % namespace_package,
-            '%s.mesh.texture_types' % namespace_package
+            '%s.mesh.texture_types' % namespace_package,
+            '%s.mesh.manual_patches' % namespace_package
             ]  # actual subpackage described here
 
 package_dir = {namespace_package: '%s-mesh-namespace' % namespace_package,
@@ -262,6 +263,7 @@ package_dir = {namespace_package: '%s-mesh-namespace' % namespace_package,
                '%s.mesh.geometry' % namespace_package: 'mesh/geometry',
                '%s.mesh.serialization' % namespace_package: 'mesh/serialization',
                '%s.mesh.texture_types' % namespace_package: 'mesh/texture_types',
+               '%s.mesh.manual_patches' % namespace_package: 'mesh/manual_patches',
                }
 
 setup(name='%s-mesh' % namespace_package,
