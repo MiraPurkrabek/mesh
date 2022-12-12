@@ -6,9 +6,14 @@ import numpy as np
 import cv2
 from PIL import Image
 from torchvision import transforms
+import plotly.graph_objects as go
 import torch
 import json
 from copy import deepcopy
+
+from matplotlib import path
+import matplotlib.pyplot as plt
+
 
 TEST_IMG = "occlusion_E_00"
 IMG_SIZE = 1024
@@ -79,85 +84,79 @@ for part_name in segmentation.keys():
     )
 
 # ---------------------------------------------------------------------------------------------------------------
-# ----- Mark random vertices with red ---------------------------------------------------------------------------
+# ----- Show manual patches -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
-colors = np.zeros((len(segmentation["rightShoulder"]), 3))
-colors[:, 0] = range(len(segmentation["rightShoulder"]))
-colors /= len(segmentation["rightShoulder"])
-gradient_mesh.set_vertex_colors(
-    colors,
-    vertex_indices = segmentation["rightShoulder"]
-)
 
-# ---------------------------------------------------------------------------------------------------------------
-# ----- Mark random vertices with red ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------
-body_part = "hips"
-colors = [
-    "red",
-    "green",
-    "blue",
-    "yellow",
-    "orange",
-    "magenta",
-    "brown"
-]
+v_indices = np.array(list(range(segmented_mesh.v.shape[0])))
+for key, item in SMPL_points.items():
+    if key.startswith("_"):
+        continue
+    
+    # Draw border points to the mesh
+    color = np.random.random(3)
+    marked_mesh.set_vertex_colors(
+        color,
+        vertex_indices=item
+    )
 
-# for color in colors:
-#     random_vertices = np.random.randint(
-#         low = 0,
-#         high = len(segmentation[body_part]),
-#         size = 1
-#     )
-#     random_vertices = segmentation[body_part][random_vertices[0]]
-#     marked_mesh.set_vertex_colors(
-#         color,
-#         vertex_indices=random_vertices
-#     )
-#     print(color, random_vertices)
+    # Compute all 'inside' points of the patch
+    if key.startswith("front"):
+        front_flags = np.squeeze(marked_mesh.v[:, 2] >= 0)
+        front_pts = marked_mesh.v[front_flags, :2]
+        front_indices = v_indices[front_flags]
 
-marked_mesh.set_vertex_colors(
-    "red",
-    vertex_indices=[SMPL_points["rightShoulderFront"]]
-)
-marked_mesh.set_vertex_colors(
-    "red",
-    vertex_indices=SMPL_points["leftShoulderFront"]
-)
-marked_mesh.set_vertex_colors(
-    "red",
-    vertex_indices=[SMPL_points["leftHipFront"]]
-)
-marked_mesh.set_vertex_colors(
-    "red",
-    vertex_indices=[SMPL_points["rightHipFront"]]
-)
+        p = path.Path(marked_mesh.v[item, :2])
+        flags = p.contains_points(front_pts)
+        inside_indices = front_indices[flags]
+        gradient_mesh.set_vertex_colors(
+            color,
+            vertex_indices=inside_indices
+        )
+    # Compute all 'inside' points of the patch
+    elif key.startswith("back"):
+        back_flags = np.squeeze(marked_mesh.v[:, 2] < 0)
+        back_pts = marked_mesh.v[back_flags, :2]
+        back_indices = v_indices[back_flags]
 
-marked_mesh.set_vertex_colors(
-    "green",
-    vertex_indices=[SMPL_points["rightShoulderBack"]]
-)
-marked_mesh.set_vertex_colors(
-    "green",
-    vertex_indices=SMPL_points["leftShoulderBack"]
-)
-marked_mesh.set_vertex_colors(
-    "green",
-    vertex_indices=SMPL_points["leftHipBack"]
-)
-marked_mesh.set_vertex_colors(
-    "green",
-    vertex_indices=[SMPL_points["rightHipBack"]]
-)
-
-
+        p = path.Path(marked_mesh.v[item, :2])
+        flags = p.contains_points(back_pts)
+        inside_indices = back_indices[flags]
+        gradient_mesh.set_vertex_colors(
+            color,
+            vertex_indices=inside_indices
+        )
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Visualization -------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 if "DISPLAY" in os.environ.keys() and os.environ["DISPLAY"]:
-    mvs = MeshViewers(shape=(1, 1))
-    # mvs[0][0].set_static_meshes([segmented_mesh])
-    # mvs[0][1].set_static_meshes([gradient_mesh])
-    mvs[0][0].set_static_meshes([marked_mesh])
+
+    fig = go.Figure(
+        data=[go.Scatter3d(
+            x=segmented_mesh.v[:, 0],
+            y=segmented_mesh.v[:, 1],
+            z=segmented_mesh.v[:, 2],
+            mode='markers',
+            marker=dict(
+                size=1,                # set color to an array/list of desired values
+                colorscale='Viridis',   # choose a colorscale
+                color=v_indices,
+                opacity=0.8,
+            ),
+            text=v_indices,
+        )],
+    )
+    fig.update_layout(
+        scene = dict(
+                # aspectmode = 'cube',
+                zaxis = dict(nticks=4, range=[-10,0],),
+            ),
+        )
+    # fig.show()
+
+    
+    mvs = MeshViewers(shape=(1, 3))
+    mvs[0][0].set_static_meshes([segmented_mesh])
+    mvs[0][1].set_static_meshes([marked_mesh])
+    mvs[0][2].set_static_meshes([gradient_mesh])
     

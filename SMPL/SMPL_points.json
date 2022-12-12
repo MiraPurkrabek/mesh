@@ -1,10 +1,48 @@
 {
-    "rightShoulderFront": 4774,
-    "rightShoulderBack": 5317,
-    "leftShoulderFront": [1895, 1243], 
-    "leftShoulderBack": 609,
-    "rightHipBack": [6532, 6376],
-    "leftHipBack": 2911,
-    "leftHipFront": 1448,
-    "rightHipFront": 4983
+    "_notes": "all patches are starting from the top left corner (when looking as an outside observer) and going clockwise",
+    
+    "frontSide": [
+        4772, 1293, 3475, 4400
+    ],
+    
+    "frontCenter": [
+        4182, 931, 691, 4179
+    ],
+
+    "frontLeftTit": [
+        694, 622, 692, 688
+    ],
+
+    "frontRightTit": [
+        4136, 4084, 4141, 4679
+    ],
+
+    "frontBelly": [
+        6291, 1484, 1799, 5262
+    ],
+    
+    "frontRightLeg": [
+        4973, 6552, 4657, 4518
+    ],
+
+    "frontLeftLeg": [
+        1162, 875, 1030, 1171
+    ],
+
+    "backSide": [
+        706, 4197, 6558, 3138
+    ],
+
+    "backName": [
+        1243, 4725, 6366, 1436
+    ],
+
+    "backNumber": [
+        2935, 6424, 4372, 887
+    ],
+
+    "backLower": [
+        887, 4372, 6558, 3138
+    ]
+    
 }
