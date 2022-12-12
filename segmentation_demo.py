@@ -88,6 +88,7 @@ for part_name in segmentation.keys():
 # ---------------------------------------------------------------------------------------------------------------
 
 v_indices = np.array(list(range(segmented_mesh.v.shape[0])))
+patches_dict = {}
 for key, item in SMPL_points.items():
     if key.startswith("_"):
         continue
@@ -98,6 +99,8 @@ for key, item in SMPL_points.items():
         color,
         vertex_indices=item
     )
+
+    patches_dict[key] = {}
 
     # Compute all 'inside' points of the patch
     if key.startswith("front"):
@@ -112,6 +115,7 @@ for key, item in SMPL_points.items():
             color,
             vertex_indices=inside_indices
         )
+        projected_pts = front_pts[flags, :]
     # Compute all 'inside' points of the patch
     elif key.startswith("back"):
         back_flags = np.squeeze(marked_mesh.v[:, 2] < 0)
@@ -125,6 +129,22 @@ for key, item in SMPL_points.items():
             color,
             vertex_indices=inside_indices
         )
+    
+    # Scale points between 0 and 1 for easier use in image reprojection
+    projected_pts = marked_mesh.v[inside_indices, :2]
+    # print(np.min(projected_pts, axis=0), np.max(projected_pts, axis=0))
+    projected_pts -= np.min(projected_pts, axis=0)
+    # print(np.min(projected_pts, axis=0), np.max(projected_pts, axis=0))
+    projected_pts /= np.max(projected_pts, axis=0)
+    # print(np.min(projected_pts, axis=0), np.max(projected_pts, axis=0))
+    patches_dict[key]["projected_points"] = projected_pts.tolist()
+    patches_dict[key]["indices"] = inside_indices.tolist()
+
+# ---------------------------------------------------------------------------------------------------------------
+# ----- Save the patches in one dict ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+with open(os.path.join("SMPL", "SMPL_patches.json"), "w") as seg_ptch_file:
+    json.dump(patches_dict, seg_ptch_file, indent=2)
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Visualization -------------------------------------------------------------------------------------------

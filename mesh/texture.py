@@ -182,53 +182,80 @@ def create_texture_from_fc(self, texture_size=128):
 
     return texture
 
-def extract_image_patches(self, image, camera, patches_dict, target_size=256):
-    
+def extract_image_patches(
+    self,
+    image,
+    camera,
+    patches_dict,
+    visible_vertices=None,
+    target_size=256,
+    visibility_threshold=0.7
+):
 
     assert isinstance(patches_dict, dict), "Patches dict must be a dictionary. It is {}".format(type(patches_dict))
 
+    if visible_vertices is None:
+        # If the visibility is not given, take all vertices
+        visible_vertices = np.ones(self.v.shape[0], dtype=bool)
+    else:
+        visible_vertices = np.array(visible_vertices)
+
     _, image_size, _ = image.shape
+
+    output_dict = {}
 
     projected_pts = project_to_camera(self, camera)
     projected_pts = projected_pts + 1
     projected_pts *= (image_size/2)
 
-    for patch_name, patch_pts in patches_dict.items():
+    for patch_name, patch_subdict in patches_dict.items():
         if patch_name.startswith("_"):
             continue
+        
+        patch_idx = np.array(patch_subdict["indices"])
+        patch_proj_pts = np.array(patch_subdict["projected_points"]) * (target_size-1)
 
-        # if patch_name.startswith("front"):
-        #     continue
+        # Ignore not visible patches
+        patch_visibility = (visible_vertices[patch_idx]).astype(bool)
+        patch_visible = np.sum(patch_visibility) / len(patch_visibility)
+        if patch_visible < visibility_threshold:
+            output_dict[patch_name] = None
+            continue
 
-        print(patch_name.upper())
+        # Filter out non-visible vertices
+        # non_patch_idx = patch_idx[~ patch_visibility]
+        patch_idx = patch_idx[patch_visibility]
+        patch_proj_pts = patch_proj_pts[patch_visibility]
 
-        patch_image_coors = projected_pts[patch_pts, :]
+        patch_image_coors = projected_pts[patch_idx, :]
         patch_image_coors = patch_image_coors.astype(np.float32)
+        # non_patch_image_coors = projected_pts[non_patch_idx, :]
+        # non_patch_image_coors = non_patch_image_coors.astype(np.float32)
 
-        plt.imshow(image/255)
-        plt.plot(patch_image_coors[:, 0], patch_image_coors[:, 1], 'rx')
-        plt.show()
+        # plt.imshow(image/255)
+        # plt.plot(patch_image_coors[:, 0], patch_image_coors[:, 1], 'r.')
+        # plt.plot(non_patch_image_coors[:, 0], non_patch_image_coors[:, 1], 'b.')
+        # plt.show()
 
-        dst = np.array([
-            [0, 0] ,
-            [target_size, 0],
-            [target_size, target_size],
-            [0, target_size],
-        ], dtype=np.float32)
-
-        warpMat, status = cv2.findHomography(
+        warpMat, _ = cv2.findHomography(
             patch_image_coors,
-            dst,
+            patch_proj_pts.astype(np.float32),
+            method=cv2.LMEDS
         )
-        warped_rect = cv2.warpPerspective(
+        warped_patch = cv2.warpPerspective(
             image,
             warpMat,
             (target_size, target_size),
             flags=cv2.INTER_CUBIC,
         )
+        warped_patch = np.clip(warped_patch, 0, 255)
 
-        plt.imshow(warped_rect/255)
-        plt.show()
+        # plt.imshow(warped_patch[::-1, ::-1, :]/255)
+        # plt.plot(patch_proj_pts[:, 0], patch_proj_pts[:, 1], 'rx')
+        # plt.show()
+
+        output_dict[patch_name] = warped_patch
+    return output_dict
 
 
 def create_texture_from_image(self, pts, image, texture_size=128):

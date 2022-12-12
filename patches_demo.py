@@ -8,7 +8,7 @@ from torchvision import transforms
 import torch
 from copy import deepcopy
 
-TEST_IMG = "classic_E_03"
+TEST_IMG = "occlusion_E_00"
 SRC_IMG_SIZE = 224
 TARGET_IMG_SIZE = 256
 
@@ -53,8 +53,16 @@ camera = [orig_camera[1], orig_camera[2], 2*1000.0/SRC_IMG_SIZE*orig_camera[0]]
 original_mesh.v = orig_vertices.copy()
 ret = original_mesh.extract_patches_from_image(
     input_image,
-    orig_camera,
+    projection_camera = orig_camera,
+    visibility_camera = camera,
     target_size=TARGET_IMG_SIZE,
 )
 
+# ---------------------------------------------------------------------------------------------------------------
+# ----- Visualization -------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
+# if "DISPLAY" in os.environ.keys() and os.environ["DISPLAY"]:
+    
+#     mvs = MeshViewers(shape=(1, 3))
+#     mvs[0][0].set_static_meshes([original_mesh])
 

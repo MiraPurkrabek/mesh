@@ -406,7 +406,7 @@ class Mesh(object):
         return texture.create_texture_from_fc(self, texture_size)
 
     def extract_patches_from_image(
-        self, image, camera=[1, 0, 0], target_size=256, patches_dict=None
+        self, image, projection_camera=[1, 0, 0], visibility_camera=None, target_size=256, patches_dict=None
     ):
         if patches_dict is None:
             with open(
@@ -414,13 +414,25 @@ class Mesh(object):
                 "r",
             ) as points_file:
                 patches_dict = json.load(points_file)
+        if visibility_camera is None:
+            visibility_camera = projection_camera
+
+        self.v = - self.v
+        vis = self.vertex_visibility(
+            visibility_camera,
+            normal_threshold=None,
+            omni_directional_camera=True,
+            binary_visiblity=True
+        )
+        self.v = - self.v
 
         return texture.extract_image_patches(
             self,
             image,
-            camera=camera,
+            camera=projection_camera,
             target_size=target_size,
-            patches_dict=patches_dict
+            patches_dict=patches_dict,
+            visible_vertices=vis
         )
 
     def create_texture_fom_image(
