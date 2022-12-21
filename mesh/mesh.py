@@ -453,10 +453,8 @@ class Mesh(object):
         assert len(images) == len(vis_cameras), "Number of images and visibility cameras must be the same"
         assert len(images) == len(proj_cameras), "Number of images and projection cameras must be the same"
 
-        merged_texture = np.random.random(size=(texture_size, texture_size, 3)) * 255
-        partial_textures = [
-            np.random.random(size=(texture_size, texture_size, 3)) * 255 for _ in range(4)
-        ]
+        merged_texture = np.zeros((texture_size, texture_size, 3))
+        partial_textures = []
 
         # Do some shit here
         for i in range(len(images)):
@@ -501,7 +499,12 @@ class Mesh(object):
                 partial_mesh.print("[DEBUG] 'Colored' mesh - {:d}".format(i))
 
             start = time.perf_counter()
-            new_texture = texture.create_texture_from_image(partial_mesh, raw_pts, image, texture_size=texture_size)
+            partial_texture, merged_texture = texture.create_texture_from_image(
+                partial_mesh,
+                raw_pts,
+                image,
+                old_texture=merged_texture,
+            )
             stop = time.perf_counter()
             if verbose:
                 print("The Texture commputation took {:.2f} seconds ({:.2f} minutes)".format(
@@ -509,7 +512,7 @@ class Mesh(object):
                     (stop-start)/60
                 ))
 
-            partial_textures[i] = new_texture
+            partial_textures.append(partial_texture.copy())
 
         if return_partial_textures:
             return merged_texture, partial_textures

@@ -258,7 +258,7 @@ def extract_image_patches(
     return output_dict
 
 
-def create_texture_from_image(self, pts, image, texture_size=128):
+def create_texture_from_image(self, pts, image, old_texture=None, texture_size=128):
     # Re-scale pts from 0 to 1
     if np.min(pts) < 0 or np.max(pts) > 1:
         pts += 1
@@ -268,8 +268,14 @@ def create_texture_from_image(self, pts, image, texture_size=128):
     
     _, image_size, _ = image.shape
 
-    texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
-    
+    # If given texture, force its dimensions.
+    if old_texture is None:
+        texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
+    else:
+        old_texture = old_texture[::-1, :, ::-1]
+        texture_size = old_texture.shape[0]
+        texture = np.zeros((texture_size, texture_size, 3), dtype=np.uint8)
+
     texture_coors = texture_coordinates_by_vertex(self)
     # Take always the first point. Not clear why returning more than one point
     # as all points for one vertex are the same. Would maybe work differently for 
@@ -333,7 +339,18 @@ def create_texture_from_image(self, pts, image, texture_size=128):
             texture_rect[1]:texture_rect[1]+texture_rect[3],
             texture_rect[0]:texture_rect[0]+texture_rect[2],
         ] += warped_rect.astype(texture.dtype)
-        
+
+        if old_texture is not None:
+            old_texture[
+                texture_rect[1]:texture_rect[1]+texture_rect[3],
+                texture_rect[0]:texture_rect[0]+texture_rect[2],
+            ] *= ((1.0, 1.0, 1.0) - mask).astype(texture.dtype)
+            old_texture[
+                texture_rect[1]:texture_rect[1]+texture_rect[3],
+                texture_rect[0]:texture_rect[0]+texture_rect[2],
+            ] += warped_rect.astype(texture.dtype)
+
+
         masking_time = time.perf_counter() - start_time
         start_time = time.perf_counter()
 
@@ -364,5 +381,8 @@ def create_texture_from_image(self, pts, image, texture_size=128):
     # plt.plot(texture_tri[:, 0], texture_tri[:, 1], 'r.')
     # plt.show()
     
-    return texture[::-1, :, ::-1]
-    
+    if old_texture is None:
+        return texture[::-1, :, ::-1]
+    else:
+        return texture[::-1, :, ::-1], old_texture[::-1, :, ::-1]
+

@@ -8,7 +8,7 @@ from torchvision import transforms
 import torch
 from copy import deepcopy
 
-MULTIVIEW_NUM=2
+MULTIVIEW_NUM=0
 UV_MAP_TYPE = "BF" # 'SMPL' or 'BF'
 IMG_SIZE=256
 
@@ -80,7 +80,8 @@ merged_texture, partial_textures = mesh.merge_texture_from_image(
         vis_cameras=cameras,
         proj_cameras=orig_cameras,
         texture_size = 1024,
-        normal_threshold = -0.5,
+        normal_threshold = None,
+        # normal_threshold = 0.0,
         return_partial_textures = True,
         verbose = True,
     )
