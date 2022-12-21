@@ -80,8 +80,9 @@ merged_texture, partial_textures = mesh.merge_texture_from_image(
         vis_cameras=cameras,
         proj_cameras=orig_cameras,
         texture_size = 1024,
-        normal_threshold = -0.3,
+        normal_threshold = -0.5,
         return_partial_textures = True,
+        verbose = True,
     )
 
 
@@ -132,7 +133,9 @@ for i in range(4):
             DATA_PATH,
             "partial_{:s}_texture_c{:d}.png".format(UV_MAP_TYPE.upper(), i)
     ))
+    # pmesh.v = - vertices[i].copy()
     partial_meshes.append(pmesh)
+    
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Visualization -------------------------------------------------------------------------------------------

@@ -333,7 +333,7 @@ class Mesh(object):
         vis, n_dot_cam = self.vertex_visibility_and_normals(camera, omni_directional_camera)
 
         if normal_threshold is not None:
-            vis = np.logical_and(vis, n_dot_cam > normal_threshold)
+            vis = np.logical_and(vis, n_dot_cam < normal_threshold)
 
         return np.squeeze(vis) if binary_visiblity else np.squeeze(vis * n_dot_cam)
 
@@ -444,6 +444,7 @@ class Mesh(object):
         texture_size = 256,
         normal_threshold = -0.3,
         return_partial_textures = False,
+        verbose = False,
     ):
         if proj_cameras is None:
             proj_cameras = vis_cameras
@@ -458,6 +459,57 @@ class Mesh(object):
         ]
 
         # Do some shit here
+        for i in range(len(images)):
+            image = images[i]
+            v = vertices[i]
+            proj_camera = proj_cameras[i]
+            vis_camera = vis_cameras[i]
+
+            self.v = v
+            unique_mesh = self.uniquified_mesh()
+            if verbose:
+                unique_mesh.print("[DEBUG] Unique mesh - {:d}".format(i))
+
+            # Create partial mesh by visibility function
+            partial_mesh = unique_mesh.visibile_mesh(
+                camera=vis_camera,
+                criterion=np.all,
+                normal_threshold=normal_threshold,
+            )
+            if verbose:
+                partial_mesh.print("[DEBUG] Partial mesh - {:d}".format(i))
+
+            # Unique mesh for easier sampling
+            partial_mesh = partial_mesh.uniquified_mesh()
+            if verbose:
+                partial_mesh.print("[DEBUG] Partial mesh after uniquification - {:d}".format(i))
+
+            # Orthogonal projection
+            partial_mesh.v = - partial_mesh.v
+            raw_pts = partial_mesh.project_to_camera(camera=proj_camera)
+            
+            # Remove vertices that are not in the image
+            valid_pts = np.all(raw_pts <= 1, axis=1)
+            valid_pts = np.all(raw_pts >= -1, axis=1) & valid_pts
+            raw_pts = raw_pts[valid_pts, :]
+            
+            # Remove invalid points from the mesh for consistency
+            partial_mesh = partial_mesh.visibile_mesh(vertices_indices=valid_pts)
+            partial_mesh.v = - partial_mesh.v
+
+            if verbose:
+                partial_mesh.print("[DEBUG] 'Colored' mesh - {:d}".format(i))
+
+            start = time.perf_counter()
+            new_texture = texture.create_texture_from_image(partial_mesh, raw_pts, image, texture_size=texture_size)
+            stop = time.perf_counter()
+            if verbose:
+                print("The Texture commputation took {:.2f} seconds ({:.2f} minutes)".format(
+                    stop-start,
+                    (stop-start)/60
+                ))
+
+            partial_textures[i] = new_texture
 
         if return_partial_textures:
             return merged_texture, partial_textures
