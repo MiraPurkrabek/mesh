@@ -435,13 +435,41 @@ class Mesh(object):
             visible_vertices=vis
         )
 
-    def create_texture_fom_image(
+    def merge_texture_from_image(
+        self,
+        images: list,
+        vertices: list,
+        vis_cameras: list,
+        proj_cameras=None,
+        texture_size = 256,
+        normal_threshold = -0.3,
+        return_partial_textures = False,
+    ):
+        if proj_cameras is None:
+            proj_cameras = vis_cameras
+
+        assert len(images) == len(vertices), "Number of images and vertices must be the same"
+        assert len(images) == len(vis_cameras), "Number of images and visibility cameras must be the same"
+        assert len(images) == len(proj_cameras), "Number of images and projection cameras must be the same"
+
+        merged_texture = np.random.random(size=(texture_size, texture_size, 3)) * 255
+        partial_textures = [
+            np.random.random(size=(texture_size, texture_size, 3)) * 255 for _ in range(4)
+        ]
+
+        # Do some shit here
+
+        if return_partial_textures:
+            return merged_texture, partial_textures
+        else:
+            return merged_texture
+    
+    def create_texture_from_image(
         self, 
         image,
         visibility_camera,
         projection_camera=None,
         texture_size=256,
-        n_subdivisions=1,
         return_reprojection_image=False,
         verbose=True,
     ):
@@ -456,7 +484,6 @@ class Mesh(object):
         if projection_camera is None:
             projection_camera = visibility_camera
         
-        # unique_mesh = self
         unique_mesh = self.uniquified_mesh()
         if verbose:
             unique_mesh.print("[DEBUG] Unique mesh")
@@ -474,13 +501,6 @@ class Mesh(object):
         if verbose:
             partial_mesh.print("[DEBUG] Partial mesh after uniquification")
 
-        # Subdivision
-        for _ in range(n_subdivisions):
-            partial_mesh = partial_mesh.subdivide_triangles()
-        partial_mesh.estimate_vertex_normals()
-        if verbose:
-            partial_mesh.print("[DEBUG] Partial mesh after subdivision")
-
         # Orthogonal projection
         partial_mesh.v = - partial_mesh.v
         raw_pts = partial_mesh.project_to_camera(camera=projection_camera)
@@ -488,8 +508,11 @@ class Mesh(object):
         # Remove vertices that are not in the image
         valid_pts = np.all(raw_pts <= 1, axis=1)
         valid_pts = np.all(raw_pts >= -1, axis=1) & valid_pts
-        partial_mesh = partial_mesh.visibile_mesh(vertices_indices=valid_pts)
         raw_pts = raw_pts[valid_pts, :]
+        
+        # Remove invalid points from the mesh for consistency
+        partial_mesh = partial_mesh.visibile_mesh(vertices_indices=valid_pts)
+        partial_mesh.v = - partial_mesh.v
 
         # Draw reprojection image
         if return_reprojection_image:
@@ -499,21 +522,11 @@ class Mesh(object):
             pts_int = pts.astype(int)
             projected_image[pts_int[:, 1], pts_int[:, 0], :] = (255, 0, 0)
 
-        # Create temporary colored mesh
-        colored_mesh = Mesh(
-            texturetype= self.texturetype,
-        )
-        # Copy vertices and faces from the unique (fully visible) mesh
-        colored_mesh.v = - partial_mesh.v
-        colored_mesh.f = partial_mesh.f
-        colored_mesh.vt = partial_mesh.vt
-        colored_mesh.ft = partial_mesh.ft
         if verbose:
-            colored_mesh.print("[DEBUG] Colored mesh")
-
+            partial_mesh.print("[DEBUG] 'Colored' mesh")
 
         start = time.perf_counter()
-        new_texture = texture.create_texture_from_image(colored_mesh, raw_pts, image, texture_size=texture_size)
+        new_texture = texture.create_texture_from_image(partial_mesh, raw_pts, image, texture_size=texture_size)
         stop = time.perf_counter()
         if verbose:
             print("The Texture commputation took {:.2f} seconds ({:.2f} minutes)".format(

@@ -74,16 +74,16 @@ for file in os.listdir(DATA_PATH):
 # ----- Estimate the new texture from multiple images -----------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 
-# Need to make a new mesh-based function
+merged_texture, partial_textures = mesh.merge_texture_from_image(
+        images,
+        vertices,
+        vis_cameras=cameras,
+        proj_cameras=orig_cameras,
+        texture_size = 1024,
+        normal_threshold = -0.3,
+        return_partial_textures = True,
+    )
 
-# For each triplet (image, vertices, camera):
-#   Do some shit 
-
-# Outputs:
-# - New texture from multiple views
-# - Partial textures to show multiple views
-merged_texture = np.random.random(size=(1024, 1024, 3)) * 255
-partial_textures = [np.random.random(size=(1024, 1024, 3)) * 255 for _ in range(4)]
 
 # ---------------------------------------------------------------------------------------------------------------
 # ----- Save the estimated textures -----------------------------------------------------------------------------

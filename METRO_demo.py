@@ -63,12 +63,11 @@ camera = [orig_camera[1], orig_camera[2], 2*1000.0/IMG_SIZE*orig_camera[0]]
 # ----- Estimate the new texture with built-in function ---------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------
 control_mesh.v = -orig_vertices.copy()
-control_texture, control_reprojection = control_mesh.create_texture_fom_image(
+control_texture, control_reprojection = control_mesh.create_texture_from_image(
     input_image,
     camera,
     projection_camera=orig_camera,
     texture_size=UV_MAP_SIZE,
-    n_subdivisions=NUMBER_OF_SUBDIVISIONS,
     return_reprojection_image=True,
 )
 
